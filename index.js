@@ -17,7 +17,7 @@ module.exports = function (source) {
     const compilers = {
         transcrypt: {
             switches: '-b -n -m',
-            folder: `.${slash}__javascript__`,
+            folder: `.${slash}__target__`,
             install: 'pip install transcrypt',
             python_version: '3.x',
             sourcemaps: true,
@@ -102,17 +102,16 @@ module.exports = function (source) {
             basename = `__${fileinfo.name}`
             delete_after = true;
             fs.writeFileSync(`${srcDir}${slash}__${fileinfo.name}.py`, source);
-        }else if(fileinfo.ext != ".py")
-        {
+        }else if(fileinfo.ext != ".py") {
             console.warn("This loader only handles .py files. This could be a problem with your webpack.config.js file. Please add a rule for .py files in your modules entry.");
             callback(null, source);
             return;
         }
         cmd.get(`${compiler.name} ${compiler.switches} '${srcDir}${slash}${basename}.py'`, function(err, data, stderr) {
-
             if (!err) {
                 const filename = `${srcDir}${slash}${compiler.folder}${slash}${basename}.js`;
                 js = fs.readFileSync(filename, "utf8");
+
                 if (!compiler.keep_compiled) {
                     fs.unlinkSync(filename);
                     if (delete_after) {
@@ -120,8 +119,12 @@ module.exports = function (source) {
                     }
                 }
 
+                // 适配
+                js = js.replace("'./org.transcrypt.__runtime__.js';", `'${options.folder}/org.transcrypt.__runtime__.js';`)
+                fs.writeFileSync(filename, js);
+
                 if (compiler.sourcemaps) {
-                    const sourceMapFile = `${srcDir}${slash}${compiler.folder}${slash}extra${slash}sourcemap${slash}${basename}.js`;
+                    const sourceMapFile = `${srcDir}${slash}${compiler.folder}${slash}${basename}`;
                     sourceMap = fs.readFileSync(sourceMapFile + ".map", "utf8")
                     if (!compiler.keep_compiled) {
                         fs.unlinkSync(sourceMapFile + ".map");
@@ -131,7 +134,6 @@ module.exports = function (source) {
                 else {
                     callback(null, js);
                 }
-
             }
             else {
                 console.error(stderr)
@@ -139,7 +141,6 @@ module.exports = function (source) {
                 // console.error(`Some error occurred on ${properName(compiler.name)} compiler execution. Have you installed ${properName(compiler.name)}? If not, please run \`${compiler.install}\` (requires Python ${compiler.python_version})`);
                 callback(err);
             }
-
         });
     }
 }
